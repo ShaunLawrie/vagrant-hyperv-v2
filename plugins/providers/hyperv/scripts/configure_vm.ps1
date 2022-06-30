@@ -22,7 +22,7 @@ param(
     [parameter (Mandatory=$false)]
     [switch] $EnableAutomaticCheckpoints,
     [parameter (Mandatory=$false)]
-    [string[]] $AdditionalSwitches
+    [string] $AdditionalSwitches
 )
 
 $ErrorActionPreference = "Stop"
@@ -47,7 +47,7 @@ if($Memory -or $MaxMemory) {
     try {
         Set-VagrantVMMemory -VM $VM -Memory $Memory -MaxMemory $MaxMemory
     } catch {
-        Write-ErrorMessage "Failed to configure memory: ${PSItem}"
+        Write-ErrorMessage "Failed to configure memory [$Memory, $MaxMemory]: ${PSItem}"
         exit 1
     }
 }
@@ -79,17 +79,17 @@ if($SwitchID) {
         $SwitchName = Get-VagrantVMSwitch -NameOrID $SwitchID
         Set-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
     } catch {
-        Write-ErrorMessage "Failed to configure network adapter: ${PSItem}"
+        Write-ErrorMessage "Failed to configure network adapter for '$SwitchID': ${PSItem}"
         exit 1
     }
 }
 
-foreach($additionalSwitchId in $AdditionalSwitches) {
+foreach($additionalSwitchId in $AdditionalSwitches.Split(",")) {
     try {
         $SwitchName = Get-VagrantVMSwitch -NameOrID $additionalSwitchId
         Add-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
     } catch {
-        Write-ErrorMessage "Failed to configure additional network adapter: ${PSItem}"
+        Write-ErrorMessage "Failed to configure additional network adapter for '$additionalSwitchId': ${PSItem}"
         exit 1
     }
 }

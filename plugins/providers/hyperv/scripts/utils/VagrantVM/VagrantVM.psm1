@@ -458,7 +458,7 @@ function Set-VagrantVMMemory {
 
     if($DynamicMemory) {
         if($MemoryMaximumBytes -lt $MemoryMinimumBytes) {
-            throw "Maximum memory was '$MaxMemory' value '$MemoryMaximumBytes' is less than required minimum memory value '$MemoryMinimumBytes'."
+            throw "Maximum memory value '$MemoryMaximumBytes' is less than required minimum memory value '$MemoryMinimumBytes'. (MaxMemory value was '$MaxMemory')"
         }
         if ($MemoryMaximumBytes -lt $MemoryStartupBytes) {
             throw "Maximum memory value '$MemoryMaximumBytes' is less than configured startup memory value '$MemoryStartupBytes'."

@@ -90,3 +90,34 @@ function Get-VagrantSwitches {
                 Expression = { if ($_.Name -eq $natSwitchName) { "NAT" } else { $_.SwitchType.ToString() } }
             }
 }
+
+function Get-VagrantHostNetworkConfiguration {
+    $addressesInUse = Get-NetIPAddress `
+        | Where-Object { $_.AddressFamily -eq "IPv4" } `
+        | Select-Object IPv4Address, PrefixLength
+
+    $ranges = $addressesInUse | ForEach-Object {
+        (ConvertTo-IpRange -IPAddress $_.IPv4Address -Prefix $_.PrefixLength).IPAddressToString + "/" + $_.PrefixLength
+    }
+    return $ranges
+}
+
+function ConvertTo-IpRange {
+    param (
+        [string] $IPAddress,
+        [int] $Prefix
+    )
+    return [IPAddress] (([IPAddress] $IPAddress).Address -band ([IPAddress] (ConvertTo-IPv4MaskString $Prefix)).Address)
+}
+
+function ConvertTo-IPv4MaskString {
+    param(
+      [Parameter(Mandatory = $true)]
+      [ValidateRange(0, 32)]
+      [Int] $MaskBits
+    )
+    $mask = ([Math]::Pow(2, $MaskBits) - 1) * [Math]::Pow(2, (32 - $MaskBits))
+    $bytes = [BitConverter]::GetBytes([UInt32] $mask)
+    $maskString = (($bytes.Count - 1)..0 | ForEach-Object { [String] $bytes[$_] }) -join "."
+    return $maskString
+}

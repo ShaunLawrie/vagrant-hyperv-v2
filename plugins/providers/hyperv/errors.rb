@@ -25,6 +25,10 @@ module VagrantPlugins
       class NoExternalSwitches < HyperVError
         error_key(:no_external_switches)
       end
+      
+      class DhcpNotSupported < HyperVError
+        error_key(:no_dhcp)
+      end
 
       class PowerShellFeaturesDisabled < HyperVError
         error_key(:powershell_features_disabled)

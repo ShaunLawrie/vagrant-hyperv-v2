@@ -89,6 +89,11 @@ en:
 
         For more help, please see the documentation on the Vagrant website
         for Hyper-V.
+      no_dhcp: |-
+        DHCP is not supported for private networks in Hyper-V.
+
+        For more help, please see the documentation on the Vagrant website
+        for Hyper-V.
       powershell_features_disabled: |-
         The Hyper-V cmdlets for PowerShell are not available! Vagrant
         requires these to control Hyper-V. Please enable them in the
