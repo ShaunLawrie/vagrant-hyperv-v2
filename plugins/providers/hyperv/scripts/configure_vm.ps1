@@ -20,7 +20,9 @@ param(
     [parameter (Mandatory=$false)]
     [switch] $EnableCheckpoints,
     [parameter (Mandatory=$false)]
-    [switch] $EnableAutomaticCheckpoints
+    [switch] $EnableAutomaticCheckpoints,
+    [parameter (Mandatory=$false)]
+    [string[]] $AdditionalSwitches
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,6 +80,16 @@ if($SwitchID) {
         Set-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
     } catch {
         Write-ErrorMessage "Failed to configure network adapter: ${PSItem}"
+        exit 1
+    }
+}
+
+foreach($additionalSwitchId in $AdditionalSwitches) {
+    try {
+        $SwitchName = Get-VagrantVMSwitch -NameOrID $additionalSwitchId
+        Add-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
+    } catch {
+        Write-ErrorMessage "Failed to configure additional network adapter: ${PSItem}"
         exit 1
     }
 }

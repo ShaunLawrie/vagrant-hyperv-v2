@@ -1,9 +1,9 @@
 en:
   vagrant_hyperv:
     choose_switch: |-
-      Please choose a switch to attach to your Hyper-V instance.
+      Please choose an external switch to attach to your Hyper-V instance.
       If none of these are appropriate, please open the Hyper-V manager
-      to create a new virtual switch.
+      to create a new external switch to use as a public network.
     message_already_running: |-
       Hyper-V instance already running.
     message_not_created: |-
@@ -76,6 +76,16 @@ en:
 
         A virtual switch is required for Vagrant to create a Hyper-V
         machine that is connected to a network so it can access it.
+
+        For more help, please see the documentation on the Vagrant website
+        for Hyper-V.
+      no_external_switches: |-
+        There are no external virtual switches created for Hyper-V! Please open
+        the Hyper-V Manager, go to the "Virtual Switch Manager", and create
+        at least one external virtual switch.
+
+        An external virtual switch is required for Vagrant to create a Hyper-V
+        machine that is connected to a public network.
 
         For more help, please see the documentation on the Vagrant website
         for Hyper-V.

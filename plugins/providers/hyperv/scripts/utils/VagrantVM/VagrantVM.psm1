@@ -458,10 +458,10 @@ function Set-VagrantVMMemory {
 
     if($DynamicMemory) {
         if($MemoryMaximumBytes -lt $MemoryMinimumBytes) {
-            throw "Maximum memory value is less than required minimum memory value."
+            throw "Maximum memory was '$MaxMemory' value '$MemoryMaximumBytes' is less than required minimum memory value '$MemoryMinimumBytes'."
         }
         if ($MemoryMaximumBytes -lt $MemoryStartupBytes) {
-            throw "Maximum memory value is less than configured startup memory value."
+            throw "Maximum memory value '$MemoryMaximumBytes' is less than configured startup memory value '$MemoryStartupBytes'."
         }
 
         Hyper-V\Set-VM -VM $VM -DynamicMemory
@@ -699,6 +699,38 @@ function Set-VagrantVMSwitch {
     )
     $Adapter = Hyper-V\Get-VMNetworkAdapter -VM $VM
     Hyper-V\Connect-VMNetworkAdapter -VMNetworkAdapter $Adapter -SwitchName $SwitchName
+    return $VM
+<#
+.SYNOPSIS
+
+Configure VM to use given switch.
+
+.DESCRIPTION
+
+Configures VM adapter to use the the VMSwitch with the given name.
+
+.PARAMETER VM
+
+Hyper-V VM for modification.
+
+.PARAMETER SwitchName
+
+Name of the VMSwitch.
+
+.OUTPUT
+
+VirtualMachine.
+#>
+}
+
+function Add-VagrantVMSwitch {
+    param (
+        [parameter (Mandatory=$true)]
+        [Microsoft.HyperV.PowerShell.VirtualMachine] $VM,
+        [parameter (Mandatory=$true)]
+        [String] $SwitchName
+    )
+    $VM | Hyper-V\Add-VMNetworkAdapter -SwitchName $SwitchName
     return $VM
 <#
 .SYNOPSIS

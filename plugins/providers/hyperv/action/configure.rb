@@ -12,58 +12,89 @@ module VagrantPlugins
         end
 
         def call(env)
+          managed_switches = env[:machine].provider.driver.execute(:get_managed_switches)
           switches = env[:machine].provider.driver.execute(:get_switches)
           if switches.empty?
             raise Errors::NoSwitches
           end
 
-          switch = nil
+          # Use the hyper-v Default Switch for NAT if a bridged switch wasn't found
+          default_switch = managed_switches.find{ |s|
+            s["SwitchType"].downcase == "nat"
+          }
+
+          # Attach explicitly defined networks
+          additional_switches = Array.new
           env[:machine].config.vm.networks.each do |type, opts|
             next if type != :public_network && type != :private_network
 
-            if opts[:bridge]
-              @logger.debug("Looking for switch with name or ID: #{opts[:bridge]}")
-              switch = switches.find{ |s|
-                s["Name"].downcase == opts[:bridge].to_s.downcase ||
-                  s["Id"].downcase == opts[:bridge].to_s.downcase
-              }
-              if switch
-                @logger.debug("Found switch - Name: #{switch["Name"]} ID: #{switch["Id"]}")
-                switch = switch["Id"]
-                break
-              end
+            # Internal network is a special type which is shared between guests but not the host
+            if type == :private_network && opts[:intnet]
+              type = :internal_network
             end
-          end
 
-          # If we already configured previously don't prompt for switch
-          sentinel = env[:machine].data_dir.join("action_configure")
-
-          if !switch && !sentinel.file?
-            if switches.length > 1
-              env[:ui].detail(I18n.t("vagrant_hyperv.choose_switch") + "\n ")
+            # Private network is the equivalent of virtualbox host-only network
+            # Annoyingly the private/internal terminology is flipped in hyper-v so an internal switch is what we want here
+            if type == :private_network
+              env[:ui].detail("Looking for private_network switch")
               switches.each_index do |i|
                 switch = switches[i]
-                env[:ui].detail("#{i+1}) #{switch["Name"]}")
+                env[:ui].detail("#{i+1}) #{switch["Name"]} / #{switch["SwitchType"]} / #{switch["Id"]}")
               end
-              env[:ui].detail(" ")
+              private_switch = switches.find{ |s|
+                s["SwitchType"].downcase == "internal"
+              }
+              additional_switches.append(private_switch["Id"])
+            end
 
-              switch = nil
-              while !switch
-                switch = env[:ui].ask("What switch would you like to use? ")
-                next if !switch
-                switch = switch.to_i - 1
-                switch = nil if switch < 0 || switch >= switches.length
+            # Again, the hyper-v terminology is flipped. We want a private switch for an internal network
+            if type == :internal_network
+              internal_switch = switches.find{ |s|
+                s["SwitchType"].downcase == "private"
+              }
+              additional_switches.push(internal_switch["Id"])
+            end
+
+            # Public networks will be bridged to a specified network or prompted if it can't be found
+            if type == :public_network
+              if opts[:bridge]
+                @logger.debug("Looking for switch with name or ID: #{opts[:bridge]}")
+                switch = switches.find{ |s|
+                  s["Name"].downcase == opts[:bridge].to_s.downcase ||
+                    s["Id"].downcase == opts[:bridge].to_s.downcase
+                }
+                if switch
+                  @logger.debug("Found switch - Name: #{switch["Name"]} ID: #{switch["Id"]}")
+                  additional_switches.append(switch["Id"])
+                  next
+                end
               end
-              switch = switches[switch]["Id"]
-            else
-              switch = switches.first["Id"]
-              @logger.debug("Only single switch available so using that.")
+              # Prompt if bridged interface wasn't specified or wasn't found
+              if external_switches.length > 1
+                env[:ui].detail(I18n.t("vagrant_hyperv.choose_switch") + "\n ")
+                external_switches.each_index do |i|
+                  switch = external_switches[i]
+                  env[:ui].detail("#{i+1}) #{switch["Name"]}")
+                end
+                env[:ui].detail(" ")
+  
+                switch = nil
+                while !switch
+                  switch = env[:ui].ask("What switch would you like to use? ")
+                  next if !switch
+                  switch = switch.to_i - 1
+                  switch = nil if switch < 0 || switch >= external_switches.length
+                end
+                additional_switches.append(external_switches[switch]["Id"])
+              else
+                raise Errors::NoExternalSwitches
+              end
             end
           end
 
           options = {
             "VMID" => env[:machine].id,
-            "SwitchID" => switch,
+            "SwitchID" => default_switch,
             "Memory" => env[:machine].provider_config.memory,
             "MaxMemory" => env[:machine].provider_config.maxmemory,
             "Processors" => env[:machine].provider_config.cpus,
@@ -72,6 +103,7 @@ module VagrantPlugins
             "EnableCheckpoints" => env[:machine].provider_config.enable_checkpoints,
             "EnableAutomaticCheckpoints" => env[:machine].provider_config.enable_automatic_checkpoints,
             "VirtualizationExtensions" => !!env[:machine].provider_config.enable_virtualization_extensions,
+            "AdditionalSwitches" => additional_switches
           }
           options.delete_if{|_,v| v.nil? }
 
