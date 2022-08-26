@@ -458,10 +458,10 @@ function Set-VagrantVMMemory {
 
     if($DynamicMemory) {
         if($MemoryMaximumBytes -lt $MemoryMinimumBytes) {
-            throw "Maximum memory value '$MemoryMaximumBytes' is less than required minimum memory value '$MemoryMinimumBytes'. (MaxMemory value was '$MaxMemory')"
+            throw "Maximum memory value is less than required minimum memory value."
         }
         if ($MemoryMaximumBytes -lt $MemoryStartupBytes) {
-            throw "Maximum memory value '$MemoryMaximumBytes' is less than configured startup memory value '$MemoryStartupBytes'."
+            throw "Maximum memory value is less than configured startup memory value."
         }
 
         Hyper-V\Set-VM -VM $VM -DynamicMemory
@@ -732,27 +732,6 @@ function Add-VagrantVMSwitch {
     )
     $VM | Hyper-V\Add-VMNetworkAdapter -SwitchName $SwitchName
     return $VM
-<#
-.SYNOPSIS
-
-Configure VM to use given switch.
-
-.DESCRIPTION
-
-Configures VM adapter to use the the VMSwitch with the given name.
-
-.PARAMETER VM
-
-Hyper-V VM for modification.
-
-.PARAMETER SwitchName
-
-Name of the VMSwitch.
-
-.OUTPUT
-
-VirtualMachine.
-#>
 }
 
 function Check-VagrantHyperVAccess {

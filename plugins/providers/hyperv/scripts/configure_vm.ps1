@@ -47,7 +47,7 @@ if($Memory -or $MaxMemory) {
     try {
         Set-VagrantVMMemory -VM $VM -Memory $Memory -MaxMemory $MaxMemory
     } catch {
-        Write-ErrorMessage "Failed to configure memory [$Memory, $MaxMemory]: ${PSItem}"
+        Write-ErrorMessage "Failed to configure memory: ${PSItem}"
         exit 1
     }
 }
@@ -79,7 +79,7 @@ if($SwitchID) {
         $SwitchName = Get-VagrantVMSwitch -NameOrID $SwitchID
         Set-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
     } catch {
-        Write-ErrorMessage "Failed to configure network adapter for '$SwitchID': ${PSItem}"
+        Write-ErrorMessage "Failed to configure network adapter: ${PSItem}"
         exit 1
     }
 }

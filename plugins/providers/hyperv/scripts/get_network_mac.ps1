@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 try {
+    $ip_address = ""
     $vm = Hyper-V\Get-VM -Id $VmId
     $networks = Hyper-V\Get-VMNetworkAdapter -VM $vm
     foreach ($network in $networks) {

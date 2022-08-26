@@ -20,6 +20,7 @@ Get-VM -Id $VmId | Get-VMNetworkAdapter | Foreach-Object {
         $hostAdapter = ""
     }
 
+    # Map the Hyper-V switch types to the VirtualBox equivalents
     # hostonly, nat, internal, bridged, intnet
     $adapterNumber = $number++
     $type = $null
@@ -30,7 +31,6 @@ Get-VM -Id $VmId | Get-VMNetworkAdapter | Foreach-Object {
         "external" { $type = "bridged" }
         default {
             Write-ErrorMessage "Invalid switch type found on VM '$($adapterSwitch.SwitchType)', expected one of [nat, internal, private, external]"
-            #exit 1
         }
     }
     $nics += @{

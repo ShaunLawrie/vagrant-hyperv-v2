@@ -1,4 +1,5 @@
 require "fileutils"
+
 require "log4r"
 require "timeout"
 require "vagrant/util/network_ip"
@@ -62,6 +63,7 @@ module VagrantPlugins
             end
 
             # Public networks will be bridged to a specified network or prompted if it can't be found
+            prompt = false
             if type == :public_network
               if opts[:bridge]
                 @logger.debug("Looking for switch with name or ID: #{opts[:bridge]}")
@@ -72,28 +74,32 @@ module VagrantPlugins
                 if switch
                   @logger.debug("Found switch - Name: #{switch["Name"]} ID: #{switch["Id"]}")
                   additional_switches.append(switch["Id"])
-                  next
+                else
+                  prompt = true
                 end
-              end
-              # Prompt if bridged interface wasn't specified or wasn't found
-              if external_switches.length > 1
-                env[:ui].detail(I18n.t("vagrant_hyperv.choose_switch") + "\n ")
-                external_switches.each_index do |i|
-                  switch = external_switches[i]
-                  env[:ui].detail("#{i+1}) #{switch["Name"]}")
-                end
-                env[:ui].detail(" ")
-  
-                switch = nil
-                while !switch
-                  switch = env[:ui].ask("What switch would you like to use? ")
-                  next if !switch
-                  switch = switch.to_i - 1
-                  switch = nil if switch < 0 || switch >= external_switches.length
-                end
-                additional_switches.append(external_switches[switch]["Id"])
               else
-                raise Errors::NoExternalSwitches
+                # Prompt if bridged interface wasn't specified or wasn't found
+                if switches.length > 1
+                  if prompt
+                    env[:ui].detail(I18n.t("vagrant_hyperv.choose_switch") + "\n ")
+                    switches.each_index do |i|
+                      switch = switches[i]
+                      env[:ui].detail("#{i+1}) #{switch["Name"]}")
+                    end
+                    env[:ui].detail(" ")
+      
+                    switch = nil
+                    while !switch
+                      switch = env[:ui].ask("What switch would you like to use? ")
+                      next if !switch
+                      switch = switch.to_i - 1
+                      switch = nil if switch < 0 || switch >= switches.length
+                    end
+                    additional_switches.append(switches[switch]["Id"])
+                  end
+                else
+                  raise Errors::NoExternalSwitches
+                end
               end
               data = [:bridged, opts]
             end
@@ -134,13 +140,9 @@ module VagrantPlugins
             "AdditionalSwitches" => additional_switches.join(",")
           }
           options.delete_if{|_,v| v.nil? }
-
-          env[:ui].detail("Configuring the VM...")
           env[:machine].provider.driver.execute(:configure_vm, options)
 
           if !env[:machine].provider_config.vm_integration_services.empty?
-            env[:ui].detail("Setting VM Integration Services")
-
             env[:machine].provider_config.vm_integration_services.each do |key, value|
               state = value ? "enabled" : "disabled"
               env[:ui].output("#{key} is #{state}")
@@ -151,10 +153,8 @@ module VagrantPlugins
           end
 
           if env[:machine].provider_config.enable_enhanced_session_mode
-            env[:ui].detail(I18n.t("vagrant.hyperv_enable_enhanced_session"))
             env[:machine].provider.driver.set_enhanced_session_transport_type("HvSocket")
           else
-            env[:ui].detail(I18n.t("vagrant.hyperv_disable_enhanced_session"))
             env[:machine].provider.driver.set_enhanced_session_transport_type("VMBus")
           end
           
