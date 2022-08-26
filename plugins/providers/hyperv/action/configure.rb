@@ -1,19 +1,12 @@
 require "fileutils"
-
 require "log4r"
-
+require "timeout"
 require "vagrant/util/network_ip"
 
 module VagrantPlugins
   module HyperV
     module Action
       class Configure
-
-        # Location of the VirtualBox networks configuration file
-        VBOX_NET_CONF = "/etc/vbox/networks.conf".freeze
-
-        # Default valid range for hostonly networks
-        HOSTONLY_DEFAULT_RANGE = [IPAddr.new("192.168.57.0/21").freeze].freeze
 
         include Vagrant::Util::NetworkIP
 
@@ -24,6 +17,7 @@ module VagrantPlugins
 
         def call(env)
           @env = env
+          env[:machine].provider.driver.execute(:install_managed_switches)
           managed_switches = env[:machine].provider.driver.execute(:get_managed_switches)
           switches = env[:machine].provider.driver.execute(:get_switches)
           if switches.empty?
@@ -35,9 +29,11 @@ module VagrantPlugins
             s["SwitchType"].downcase == "nat"
           }
 
-          # Attach explicitly defined networks
+          # Attach explicitly defined networks starting at number 2 because 1 is the NAT switch
           additional_switches = []
           networks = []
+          adapters = []
+          adapterCount = 2
           env[:machine].config.vm.networks.each do |type, opts|
             next if type != :public_network && type != :private_network
 
@@ -102,21 +98,24 @@ module VagrantPlugins
               data = [:bridged, opts]
             end
 
-            ##
-            ## NEED SMARTS. COPY VBOX BULLSHIT
-            ##
-
+            ## Logic copied from the virtualbox setup
             type    = data[0]
             options = data[1]
-            env[:ui].detail("#{data[0]} #{data[1]}")
+
             config = send("#{type}_config", options)
+            config[:adapter] = adapterCount
             env[:ui].detail("Normalized configuration: #{config.inspect}")
 
-            # Get the network configuration
-            env[:ui].detail("#{data[0]} #{data[1]}")
+            adapter = send("#{type}_adapter", config)
+            adapters << adapter
+            env[:ui].detail("Adapter configuration: #{adapter.inspect}")
+
             network = send("#{type}_network_config", config)
+            env[:ui].detail("Network configuration: #{network.inspect}")
             network[:auto_config] = config[:auto_config]
             networks << network
+
+            adapterCount = adapterCount + 1
           end
 
           default_switch_id = default_switch["Id"]
@@ -158,8 +157,47 @@ module VagrantPlugins
             env[:ui].detail(I18n.t("vagrant.hyperv_disable_enhanced_session"))
             env[:machine].provider.driver.set_enhanced_session_transport_type("VMBus")
           end
-
+          
+          # Continue the middleware chain.
           @app.call(env)
+
+          # If we have networks to configure, then we configure it now, since
+          # that requires the machine to be up and running.
+          if !adapters.empty? && !networks.empty?
+            assign_interface_numbers(networks, adapters)
+
+            # Only configure the networks the user requested us to configure
+            networks_to_configure = networks.select { |n| n[:auto_config] }
+            if !networks_to_configure.empty?
+              env[:ui].info I18n.t("vagrant.actions.vm.network.configuring")
+              # Hyper-v is aggressive with dhcp renewal and when the VM runs `netplan apply` it might get
+              # a new IP address and break the SSH connection which will hang forever
+              begin
+                Timeout.timeout(60) do
+                  env[:machine].guest.capability(:configure_networks, networks_to_configure)
+                end
+              rescue Timeout::Error
+                env[:ui].detail("Timed out waiting for network configuration to apply but it's probably all good")
+              end
+            end
+          end
+        end
+
+        def hostonly_adapter(config)
+          @logger.info("Searching for matching hostonly network: #{config[:ip]}")
+          interface = hostonly_find_matching_network(config)
+
+          if config[:type] == :dhcp
+            create_dhcp_server_if_necessary(interface, config)
+          end
+
+          return {
+            adapter:     config[:adapter],
+            hostonly:    interface[:name],
+            mac_address: config[:mac],
+            nic_type:    config[:nic_type],
+            type:        :hostonly
+          }
         end
 
         def hostonly_config(options)
@@ -205,28 +243,7 @@ module VagrantPlugins
               error: e.message
           end
 
-          ip = options[:ip]
-          driver = @env[:machine].provider.driver
-          validate_hostonly_ip!(ip, driver)
-
-          if ip.ipv4?
-            # Verify that a host-only network subnet would not collide
-            # with a bridged networking interface.
-            #
-            # If the subnets overlap in any way then the host only network
-            # will not work because the routing tables will force the
-            # traffic onto the real interface rather than the VirtualBox
-            # interface.
-            @env[:machine].provider.driver.read_bridged_interfaces.each do |interface|
-              that_netaddr = network_address(interface[:ip], interface[:netmask])
-              if netaddr == that_netaddr && interface[:status] != "Down"
-                raise Vagrant::Errors::NetworkCollision,
-                  netaddr: netaddr,
-                  that_netaddr: that_netaddr,
-                  interface_name: interface[:name]
-              end
-            end
-          end
+          validate_hostonly_ip!(options[:ip], @env[:machine].provider.driver)
 
           # Calculate the adapter IP which is the network address with
           # the final bit + 1. Usually it is "x.x.x.1" for IPv4 and
@@ -260,28 +277,16 @@ module VagrantPlugins
 
         # This finds a matching host only network for the given configuration.
         def hostonly_find_matching_network(config)
-          this_netaddr = network_address(config[:ip], config[:netmask])  if config[:ip]
-
-          @env[:machine].provider.driver.read_host_only_interfaces.each do |interface|
-            return interface if config[:name] && config[:name] == interface[:name]
-
-            #if a config name is specified, we should only look for that.
-            if config[:name].to_s != ""
-              next
-            end
-
-            if interface[:ip] != ""
-              return interface if this_netaddr == \
-                network_address(interface[:ip], interface[:netmask])
-            end
-
-            if interface[:ipv6] != ""
-              return interface if this_netaddr == \
-                network_address(interface[:ipv6], interface[:ipv6_prefix])
-            end
-          end
-
-          nil
+          # Always returns the same network atm
+          interface = @env[:machine].provider.driver.read_host_only_interface
+          return {
+            name: interface["Name"].to_s,
+            ip: interface["IP"].to_s,
+            netmask: interface["Netmask"].to_s,
+            ipv6: interface["IPv6"].to_s.strip,
+            ipv6_prefix: interface["IPv6Prefix"].to_s.strip,
+            status: interface["Status"].to_s
+          }
         end
 
         def create_dhcp_server_if_necessary(interface, config)
@@ -296,7 +301,7 @@ module VagrantPlugins
           if invalid_ranges.any?{ |range| range.include?(ip) }
             raise Vagrant::Errors::VirtualBoxInvalidHostSubnet,
               address: ip,
-              ranges: valid_ranges.map{ |r| "#{r}/#{r.prefix}" }.join(", ")
+              ranges_in_use: invalid_ranges.map{ |r| "#{r}/#{r.prefix}" }.join(", ")
           end
         end
 
@@ -307,6 +312,61 @@ module VagrantPlugins
           host_network_config.each do |net|
             net_conf.append(IPAddr.new(net))
           end
+          return net_conf
+        end
+
+        def hostonly_network_config(config)
+          return {
+            type:       config[:type],
+            adapter_ip: config[:adapter_ip],
+            ip:         config[:ip],
+            netmask:    config[:netmask]
+          }
+        end
+
+        def assign_interface_numbers(networks, adapters)
+          current = 0
+          adapter_to_interface = {}
+
+          # Make a first pass to assign interface numbers by adapter location
+          vm_adapters = read_network_interfaces
+          vm_adapters.sort.each do |number, adapter|
+            if adapter[:type] != :none
+              # Not used, so assign the interface number and increment
+              adapter_to_interface[number] = current
+              current += 1
+            end
+          end
+
+          # Make a pass through the adapters to assign the :interface
+          # key to each network configuration.
+          adapters.each_index do |i|
+            adapter = adapters[i]
+            network = networks[i]
+
+            # Figure out the interface number by simple lookup
+            network[:interface] = adapter_to_interface[adapter[:adapter]]
+          end
+        end
+
+        def read_network_interfaces
+          nics = {}
+          vm_network_adapters = @env[:machine].provider.driver.execute(:get_vm_network_adapters, VmId: @env[:machine].id)
+          vm_network_adapters.each do |interface|
+            adapter = interface["Number"].to_i
+            type    = interface["Type"].to_sym
+            network = interface["Network"].to_s
+
+            nics[adapter] = {}
+            nics[adapter][:type] = type
+
+            if type == :hostonly
+              nics[adapter][:hostonly] = network
+            elsif type == :bridge
+              nics[adapter][:bridge] = network
+            end
+          end
+          return nics
         end
       end
     end

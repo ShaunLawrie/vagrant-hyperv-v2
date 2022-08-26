@@ -44,7 +44,7 @@ require "vagrant/plugin/manager"
 # Debug output to remind me what version I'm using lol what a mess
 puts("  \e[36m.-\e[0m\e[34m.   \e[36m.-\e[34m.\e[0m     ")
 puts("  \e[36m\\ \\\e[34m\\ \e[36m// \e[34m/\e[0m      \e[30m\e[46m   ┃\e[46m   \e[0m")
-puts("   \e[36m\\ \\\e[34m⅄\e[36m/ \e[34m/\e[0m  \e[90m━╋━  \e[30m\e[46m━━━╋\e[46m━━━\e[0m")
+puts("   \e[36m\\ \\\e[34m⅄\e[36m/ \e[34m/\e[0m   \e[90m+   \e[30m\e[46m━━━╋\e[46m━━━\e[0m")
 puts("    \e[36m\\ | \e[34m/\e[0m        \e[30m\e[46m   ┃\e[46m   \e[0m")
 puts("     \e[36m` \e[34m´\e[0m")
 puts("Vagrant: \e[36mHyper-V V2 Development\e[0m")

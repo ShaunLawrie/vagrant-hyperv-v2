@@ -58,7 +58,8 @@ function Install-VagrantManagedSwitches {
 
 function Get-VagrantSwitches {
     param (
-        [string] $Type
+        [string] $Type,
+        [switch] $AllProperties
     )
 
     $natSwitchName = $script:SwitchDefinitions.default_network.Name
@@ -80,20 +81,32 @@ function Get-VagrantSwitches {
         }
     }
     
-    return $result `
-        | Select-Object `
-            Name,
-            NetAdapterInterfaceDescription,
-            Id,
-            @{
-                Name = "SwitchType"
-                Expression = { if ($_.Name -eq $natSwitchName) { "NAT" } else { $_.SwitchType.ToString() } }
-            }
+    if($AllProperties) {
+        return $result
+    } else {
+        return $result `
+            | Select-Object `
+                Name,
+                NetAdapterInterfaceDescription,
+                Id,
+                @{
+                    Name = "SwitchType"
+                    Expression = { if ($_.Name -eq $natSwitchName) { "NAT" } else { $_.SwitchType.ToString() } }
+                }
+    }
 }
 
 function Get-VagrantHostNetworkConfiguration {
+    param (
+        [switch] $ExcludeVagrantNetworks
+    )
+    $switchNamesToExclude = @()
+    if($ExcludeVagrantNetworks) {
+        $switchNamesToExclude = Get-VagrantSwitches -Type "Managed" | Select-Object -ExpandProperty "Name"
+    }
+
     $addressesInUse = Get-NetIPAddress `
-        | Where-Object { $_.AddressFamily -eq "IPv4" } `
+        | Where-Object { $_.AddressFamily -eq "IPv4" -and $switchNamesToExclude -notcontains ($_.InterfaceAlias -replace "^vEthernet \((.+)\)`$", "`$1") } `
         | Select-Object IPv4Address, PrefixLength
 
     $ranges = $addressesInUse | ForEach-Object {

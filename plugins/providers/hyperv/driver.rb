@@ -110,6 +110,13 @@ module VagrantPlugins
         execute(:get_network_mac, VmId: vm_id)
       end
 
+      # Get the MAC addresses of the VM
+      #
+      # @return [Hash<adapter_num, mac>]
+      def read_mac_addresses
+        execute(:get_network_macs, VmId: vm_id)
+      end
+
       # Resume the VM from suspension
       #
       # @return [nil]
@@ -295,6 +302,10 @@ module VagrantPlugins
       # @return [nil]
       def set_enhanced_session_transport_type(transport_type)
         execute(:set_enhanced_session_transport_type, VmID: vm_id, type: transport_type)
+      end
+
+      def read_host_only_interface
+        execute(:read_host_only_interface)
       end
 
       protected

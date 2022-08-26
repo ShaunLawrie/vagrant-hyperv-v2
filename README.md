@@ -1,3 +1,21 @@
+# Hyper-V Update
+
+I've hacked together something that works for a start because I've been wanting Vagrant to work more seamlessly with Hyper-V for a long time.  
+I'm just replicating the Virtualbox behaviour as close as possible so Vagrantfiles behave similarly on Hyper-V and VirtualBox.  
+🙏 In an ideal world this would get rid of the primary limitation on https://www.vagrantup.com/docs/providers/hyperv/limitations
+## Done
+ - Get a basic equivalent of the VirtualBox NAT adaptor connected by default to any machine so it has an internet connection.
+ - Connect an additional host-only network adapter with configurable static IP address.  
+ - In theory bridged adapters should work but I haven't tested it yet because I've just been trying to get 
+
+## To-do
+ - Version the provider so it can be opt-in.
+ - Provision vm adapters on demand instead of creating some templated solutions for host-only and bridged adapters. This would allow multiple private networks on a single VM.
+ - Clean up all my debug cruft.
+## Example
+
+![image](./example.png)
+
 # Vagrant
 
 - Website: [https://www.vagrantup.com/](https://www.vagrantup.com/)

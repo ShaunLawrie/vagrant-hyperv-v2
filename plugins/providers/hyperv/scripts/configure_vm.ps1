@@ -84,13 +84,15 @@ if($SwitchID) {
     }
 }
 
-foreach($additionalSwitchId in $AdditionalSwitches.Split(",")) {
-    try {
-        $SwitchName = Get-VagrantVMSwitch -NameOrID $additionalSwitchId
-        Add-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
-    } catch {
-        Write-ErrorMessage "Failed to configure additional network adapter for '$additionalSwitchId': ${PSItem}"
-        exit 1
+if(![string]::IsNullOrEmpty($AdditionalSwitches)) {
+    foreach($additionalSwitchId in $AdditionalSwitches.Split(",")) {
+        try {
+            $SwitchName = Get-VagrantVMSwitch -NameOrID $additionalSwitchId
+            Add-VagrantVMSwitch -VM $VM -SwitchName $SwitchName
+        } catch {
+            Write-ErrorMessage "Failed to configure additional network adapter for '$additionalSwitchId': ${PSItem}"
+            exit 1
+        }
     }
 }
 

@@ -107,6 +107,7 @@ module VagrantPlugins
 
             # Get the network configuration
             network = send("#{type}_network_config", config)
+            @logger.debug("Network configuration: #{network.inspect}")
             network[:auto_config] = config[:auto_config]
             networks << network
           end

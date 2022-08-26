@@ -1,9 +1,9 @@
-#Requires -Modules VagrantNetwork
+#Requires -Modules VagrantMessages, VagrantNetwork
 
 $ErrorActionPreference = "Stop"
 
 try {
-    Install-MissingVagrantSwitches
+    Install-VagrantManagedSwitches
 } catch {
     Write-ErrorMessage "Failed to install missing hyper-v switches for vagrant: ${PSItem}"
     exit 1

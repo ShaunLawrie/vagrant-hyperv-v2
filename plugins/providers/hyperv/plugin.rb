@@ -57,6 +57,11 @@ module VagrantPlugins
         Cap::ValidateDiskExt
       end
 
+      provider_capability(:hyperv, :nic_mac_addresses) do
+        require_relative "cap/configure_network"
+        Cap::ConfigureNetwork
+      end
+
       protected
 
       def self.init!
