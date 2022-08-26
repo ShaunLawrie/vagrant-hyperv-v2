@@ -1,6 +1,6 @@
 # Hyper-V Update
 
-I've hacked together something that works for a start because I've been wanting Vagrant to work more seamlessly with Hyper-V for a long time.  
+I've hacked together something that works as a proof of concept because I've been wanting Vagrant to work more seamlessly with Hyper-V for a long time.  
 I'm just replicating the Virtualbox behaviour as close as possible so Vagrantfiles behave similarly on Hyper-V and VirtualBox.  
 🙏 In an ideal world this would get rid of the primary limitation on https://www.vagrantup.com/docs/providers/hyperv/limitations
 ![image](./example.png)
