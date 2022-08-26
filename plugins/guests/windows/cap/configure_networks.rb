@@ -21,7 +21,7 @@ module VagrantPlugins
             networks.each do |network|
               interface = vm_interface_map[network[:interface].to_s]
               if interface.nil?
-                @logger.warn("Could not find interface for network #{network.inspect}")
+                @@logger.warn("Could not find interface for network #{network.inspect}")
                 next
               end
 
