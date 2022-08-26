@@ -7,7 +7,7 @@ I'm just replicating the Virtualbox behaviour as close as possible so Vagrantfil
 ## Done
  - Get a basic equivalent of the VirtualBox NAT adaptor connected by default to any machine so it has an internet connection.
  - Connect an additional host-only network adapter with configurable static IP address.  
- - In theory bridged adapters should work but I haven't tested it yet because I've just been trying to get 
+ - In theory bridged adapters should work but I haven't tested it yet because I've just been trying to get https://github.com/kubernetes-sigs/sig-windows-dev-tools working
 ## To-do
  - Version the provider so it can be opt-in.
  - Provision vm adapters on demand instead of creating some templated solutions for host-only and bridged adapters. This would allow multiple private networks on a single VM.
