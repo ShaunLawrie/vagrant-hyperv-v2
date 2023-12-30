@@ -19,7 +19,7 @@ module VagrantPlugins
           else
             vm_interface_map = create_vm_interface_map(machine, guest_network)
             networks.each do |network|
-              interface = vm_interface_map[network[:interface]+1]
+              interface = vm_interface_map[network[:interface].to_s]
               if interface.nil?
                 @@logger.warn("Could not find interface for network #{network.inspect}")
                 next

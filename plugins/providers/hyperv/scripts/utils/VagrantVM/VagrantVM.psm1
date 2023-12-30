@@ -723,6 +723,17 @@ VirtualMachine.
 #>
 }
 
+function Add-VagrantVMSwitch {
+    param (
+        [parameter (Mandatory=$true)]
+        [Microsoft.HyperV.PowerShell.VirtualMachine] $VM,
+        [parameter (Mandatory=$true)]
+        [String] $SwitchName
+    )
+    $VM | Hyper-V\Add-VMNetworkAdapter -SwitchName $SwitchName
+    return $VM
+}
+
 function Check-VagrantHyperVAccess {
     param (
         [parameter (Mandatory=$true)]
